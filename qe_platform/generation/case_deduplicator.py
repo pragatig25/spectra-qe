@@ -18,6 +18,7 @@ class CaseDeduplicator:
 
     def _get_openai_client(self):  # type: ignore[no-untyped-def]
         from openai import OpenAI
+
         return OpenAI(api_key=self._settings.openai_api_key)
 
     def deduplicate(

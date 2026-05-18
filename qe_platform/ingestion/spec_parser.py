@@ -129,7 +129,9 @@ def _parse_parameters(raw_params: list[dict]) -> list[EndpointParameter]:
                 param_type=schema.get("type", "string"),
                 required=p.get("required", False),
                 description=p.get("description", ""),
-                example=str(schema.get("example", "")) if schema.get("example") else None,
+                example=(
+                    str(schema.get("example", "")) if schema.get("example") else None
+                ),
                 enum=schema.get("enum"),
             )
         )
@@ -195,7 +197,9 @@ def _extract_user_stories(content: str) -> list[UserStory]:
 
         for line in lines[1:]:
             stripped = line.strip()
-            if stripped.lower().startswith("acceptance criteria") or stripped.lower().startswith("ac:"):
+            if stripped.lower().startswith(
+                "acceptance criteria"
+            ) or stripped.lower().startswith("ac:"):
                 in_criteria = True
                 continue
             if in_criteria and stripped.startswith("- "):

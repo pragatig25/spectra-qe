@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import pytest
-
-from qe_platform.models.risk import EndpointRiskAssessment, RiskReport, RiskTier
-from qe_platform.models.spec import EndpointSpec, HttpMethod, ParsedSpec
-from qe_platform.models.test_case import (
-    GeneratedTestCase,
-    GeneratedTestSuite,
-    TestType,
-)
+from qe_platform.models.risk import RiskReport, RiskTier
+from qe_platform.models.spec import EndpointSpec, HttpMethod
+from qe_platform.models.test_case import GeneratedTestCase, GeneratedTestSuite, TestType
 
 
 class TestEndpointSpec:
@@ -51,9 +45,7 @@ class TestGeneratedTestCase:
         assert tc.is_duplicate is False
         assert tc.similarity_score is None
 
-    def test_suite_aggregation(
-        self, sample_test_suite: GeneratedTestSuite
-    ) -> None:
+    def test_suite_aggregation(self, sample_test_suite: GeneratedTestSuite) -> None:
         assert len(sample_test_suite.test_cases) == 3
         types = {tc.test_type for tc in sample_test_suite.test_cases}
         assert TestType.HAPPY_PATH in types

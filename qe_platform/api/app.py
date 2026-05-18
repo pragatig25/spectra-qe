@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
 import tempfile
-import time
 from pathlib import Path
 from typing import List
 
@@ -26,11 +24,7 @@ from qe_platform.api.schemas import (
     RiskScoreRequest,
     RiskScoreResponse,
 )
-from qe_platform.api.streaming import (
-    generate_stream,
-    report_stream,
-    risk_score_stream,
-)
+from qe_platform.api.streaming import generate_stream, report_stream, risk_score_stream
 from qe_platform.config import Settings
 
 logger = structlog.get_logger()
@@ -63,9 +57,7 @@ def _resolve_spec_path(spec_content: str | None, spec_id: str | None) -> Path:
         return path
 
     if spec_content:
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        )
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False)
         tmp.write(spec_content)
         tmp.close()
         return Path(tmp.name)
@@ -107,7 +99,11 @@ async def parse_spec(req: ParseRequest) -> ParseResponse:
                 "tags": ep.tags,
                 "requires_auth": ep.requires_auth,
                 "parameters": [p.model_dump(exclude_none=True) for p in ep.parameters],
-                "request_body": ep.request_body.model_dump(exclude_none=True) if ep.request_body else None,
+                "request_body": (
+                    ep.request_body.model_dump(exclude_none=True)
+                    if ep.request_body
+                    else None
+                ),
                 "responses": [r.model_dump() for r in ep.responses],
             }
         )
@@ -219,9 +215,7 @@ async def risk_score_sse(req: RiskScoreRequest):
 @app.post("/api/generate/stream")
 async def generate_sse(req: GenerateRequest):
     spec_path = _resolve_spec_path(req.spec_content, req.spec_id)
-    return generate_stream(
-        spec_path, _settings, req.skip_execution, req.base_url
-    )
+    return generate_stream(spec_path, _settings, req.skip_execution, req.base_url)
 
 
 @app.post("/api/report/stream")

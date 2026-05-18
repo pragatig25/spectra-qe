@@ -46,9 +46,7 @@ def _demo_spec_key(spec_path: Path) -> str:
     return "petstore"
 
 
-def risk_score_stream(
-    spec_path: Path, settings: Settings
-) -> StreamingResponse:
+def risk_score_stream(spec_path: Path, settings: Settings) -> StreamingResponse:
     if settings.demo_mode:
         key = _demo_spec_key(spec_path)
         return StreamingResponse(
@@ -78,9 +76,7 @@ def risk_score_stream(
             return
 
         total = len(spec.endpoints)
-        yield _evt(
-            "risk_score", "started", detail={"total_endpoints": total}
-        )
+        yield _evt("risk_score", "started", detail={"total_endpoints": total})
 
         try:
             scorer = RiskScorer(settings)
@@ -226,9 +222,7 @@ def generate_stream(
         try:
             scorer = RiskScorer(settings)
         except Exception as exc:
-            yield _evt(
-                "risk_score", "error", run_id=run_id, error=str(exc)
-            )
+            yield _evt("risk_score", "error", run_id=run_id, error=str(exc))
             return
 
         risk_assessments = []
@@ -302,14 +296,10 @@ def generate_stream(
         try:
             generator = TestGenerator(settings)
         except Exception as exc:
-            yield _evt(
-                "generate", "error", run_id=run_id, error=str(exc)
-            )
+            yield _evt("generate", "error", run_id=run_id, error=str(exc))
             return
 
-        risk_map = {
-            (a.path, a.method): a for a in risk_report.assessments
-        }
+        risk_map = {(a.path, a.method): a for a in risk_report.assessments}
         suites = []
         total_tests = 0
 
@@ -421,9 +411,7 @@ def _serialize_suites(suites: list) -> list[dict]:
                 "endpoint_path": s.endpoint_path,
                 "method": s.method,
                 "risk_tier": s.risk_tier,
-                "test_cases": [
-                    tc.model_dump(mode="json") for tc in s.test_cases
-                ],
+                "test_cases": [tc.model_dump(mode="json") for tc in s.test_cases],
             }
         )
     return out
@@ -483,9 +471,7 @@ def report_stream(
         try:
             scorer = RiskScorer(settings)
         except Exception as exc:
-            yield _evt(
-                "risk_score", "error", run_id=run_id, error=str(exc)
-            )
+            yield _evt("risk_score", "error", run_id=run_id, error=str(exc))
             return
 
         risk_assessments = []
@@ -559,14 +545,10 @@ def report_stream(
         try:
             test_gen = TestGenerator(settings)
         except Exception as exc:
-            yield _evt(
-                "generate", "error", run_id=run_id, error=str(exc)
-            )
+            yield _evt("generate", "error", run_id=run_id, error=str(exc))
             return
 
-        risk_map = {
-            (a.path, a.method): a for a in risk_report.assessments
-        }
+        risk_map = {(a.path, a.method): a for a in risk_report.assessments}
         suites = []
         total_tests = 0
 
@@ -659,9 +641,7 @@ def report_stream(
 
         duration = time.time() - pipeline_start
         reporter = ReportGenerator(settings)
-        pipeline_report = reporter.generate(
-            run, results=[], duration_seconds=duration
-        )
+        pipeline_report = reporter.generate(run, results=[], duration_seconds=duration)
         report_data = pipeline_report.model_dump(mode="json")
         markdown = reporter.to_markdown(pipeline_report)
 
