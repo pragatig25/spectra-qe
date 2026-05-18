@@ -1,0 +1,1259 @@
+openapi: "3.0.3"
+info:
+  title: GitHub Repos API
+  version: "1.0.0"
+  description: >-
+    GitHub-style repository management API covering CI/CD workflows,
+    pull requests, deployments, secrets, branch protection, and webhooks.
+    Designed for QE test generation with realistic risk surfaces.
+servers:
+  - url: https://api.github.example.com/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /repos/{owner}/{repo}/branches:
+    get:
+      operationId: listBranches
+      summary: List repository branches
+      tags: [repos]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: Branch list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Branch"
+        "404":
+          description: Repository not found
+
+  /repos/{owner}/{repo}/branches/{branch}/protection:
+    post:
+      operationId: setBranchProtection
+      summary: Set branch protection rules
+      description: >-
+        Enforces required reviews, status checks, and restrictions on a branch.
+        Misconfiguration can lock out all contributors — high risk.
+      tags: [repos]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - $ref: "#/components/parameters/branch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BranchProtectionRequest"
+      responses:
+        "200":
+          description: Protection rules applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchProtection"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — requires admin access
+        "404":
+          description: Branch not found
+        "422":
+          description: Validation failed
+
+    delete:
+      operationId: deleteBranchProtection
+      summary: Remove branch protection
+      description: Removes all protection rules from the branch. Irreversible without re-applying.
+      tags: [repos]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - $ref: "#/components/parameters/branch"
+      responses:
+        "204":
+          description: Protection removed
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — requires admin access
+        "404":
+          description: Branch not found
+
+  /repos/{owner}/{repo}/pulls:
+    get:
+      operationId: listPullRequests
+      summary: List pull requests
+      tags: [pulls]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, all]
+            default: open
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created, updated, popularity]
+            default: created
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Pull request list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PullRequest"
+        "404":
+          description: Repository not found
+
+    post:
+      operationId: createPullRequest
+      summary: Create a pull request
+      tags: [pulls]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePullRequest"
+      responses:
+        "201":
+          description: Pull request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequest"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "422":
+          description: Validation failed — head branch does not exist or no diff
+
+  /repos/{owner}/{repo}/pulls/{pull_number}:
+    patch:
+      operationId: updatePullRequest
+      summary: Update a pull request
+      tags: [pulls]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - $ref: "#/components/parameters/pull_number"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePullRequest"
+      responses:
+        "200":
+          description: Pull request updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequest"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Pull request not found
+        "422":
+          description: Validation failed
+
+  /repos/{owner}/{repo}/pulls/{pull_number}/merge:
+    put:
+      operationId: mergePullRequest
+      summary: Merge a pull request
+      description: >-
+        Merges the PR into the base branch. Supports merge, squash, and rebase strategies.
+        Cannot be undone without force-pushing.
+      tags: [pulls]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - $ref: "#/components/parameters/pull_number"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                commit_title:
+                  type: string
+                  maxLength: 255
+                commit_message:
+                  type: string
+                merge_method:
+                  type: string
+                  enum: [merge, squash, rebase]
+                  default: merge
+      responses:
+        "200":
+          description: Pull request merged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sha:
+                    type: string
+                  merged:
+                    type: boolean
+                  message:
+                    type: string
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Pull request not found
+        "405":
+          description: Not mergeable — merge conflicts or checks failing
+        "409":
+          description: Conflict — head branch was modified
+
+  /repos/{owner}/{repo}/actions/runs:
+    get:
+      operationId: listWorkflowRuns
+      summary: List workflow runs
+      tags: [actions]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [queued, in_progress, completed, failure, success, cancelled]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: Workflow runs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                  workflow_runs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WorkflowRun"
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}/rerun:
+    post:
+      operationId: rerunWorkflow
+      summary: Re-run a workflow
+      description: Triggers a full re-run of the workflow. Consumes CI minutes.
+      tags: [actions]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - $ref: "#/components/parameters/run_id"
+      responses:
+        "201":
+          description: Re-run initiated
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Workflow run not found
+
+  /repos/{owner}/{repo}/actions/runs/{run_id}:
+    delete:
+      operationId: deleteWorkflowRun
+      summary: Delete a workflow run
+      description: Permanently removes workflow run logs and artifacts. Cannot be recovered.
+      tags: [actions]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - $ref: "#/components/parameters/run_id"
+      responses:
+        "204":
+          description: Run deleted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Workflow run not found
+
+  /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches:
+    post:
+      operationId: dispatchWorkflow
+      summary: Dispatch a workflow run
+      description: >-
+        Manually triggers a workflow via the repository_dispatch event.
+        Accepts arbitrary input parameters — injection risk if inputs are unsanitized.
+      tags: [actions]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ref]
+              properties:
+                ref:
+                  type: string
+                  description: Branch or tag to run the workflow on
+                inputs:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: Key-value pairs passed as workflow inputs
+      responses:
+        "204":
+          description: Workflow dispatched
+        "401":
+          description: Unauthorized
+        "404":
+          description: Workflow not found
+        "422":
+          description: Invalid ref or inputs
+
+  /repos/{owner}/{repo}/actions/secrets:
+    get:
+      operationId: listSecrets
+      summary: List repository secrets
+      description: >-
+        HIGH RISK — Returns secret metadata (names, created/updated timestamps).
+        Values are never exposed, but enumeration reveals secret naming patterns
+        and rotation cadence.
+      tags: [secrets]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Secret list (names and metadata only)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                  secrets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Secret"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Repository not found
+
+  /repos/{owner}/{repo}/actions/secrets/{secret_name}:
+    put:
+      operationId: createOrUpdateSecret
+      summary: Create or update a repository secret
+      description: >-
+        HIGH RISK — Sets an encrypted secret used by CI/CD workflows.
+        Compromised secrets can leak credentials, tokens, or signing keys
+        into workflow logs or artifacts. Requires libsodium sealed-box encryption.
+      tags: [secrets]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: secret_name
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Z_][A-Z0-9_]*$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [encrypted_value, key_id]
+              properties:
+                encrypted_value:
+                  type: string
+                  description: Libsodium sealed-box encrypted secret value (base64)
+                key_id:
+                  type: string
+                  description: ID of the public key used for encryption
+      responses:
+        "201":
+          description: Secret created
+        "204":
+          description: Secret updated
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Repository not found
+        "422":
+          description: Validation failed — invalid encryption or key_id
+
+    delete:
+      operationId: deleteSecret
+      summary: Delete a repository secret
+      description: >-
+        HIGH RISK — Permanently removes the secret. Running workflows that
+        reference it will fail. No soft-delete or recovery mechanism.
+      tags: [secrets]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: secret_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Secret deleted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Secret not found
+
+  /repos/{owner}/{repo}/deployments:
+    get:
+      operationId: listDeployments
+      summary: List deployments
+      tags: [deployments]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: environment
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Deployment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Deployment"
+        "404":
+          description: Repository not found
+
+    post:
+      operationId: createDeployment
+      summary: Create a deployment
+      description: >-
+        Triggers a deployment to the specified environment. Production deployments
+        should require environment protection rules.
+      tags: [deployments]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeployment"
+      responses:
+        "201":
+          description: Deployment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deployment"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "409":
+          description: Conflict — merge conflicts or required status checks failing
+        "422":
+          description: Validation failed
+
+  /repos/{owner}/{repo}/deployments/{deployment_id}/statuses:
+    post:
+      operationId: createDeploymentStatus
+      summary: Create a deployment status
+      description: Reports the state of a deployment (pending, success, failure, etc.).
+      tags: [deployments]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: deployment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state:
+                  type: string
+                  enum: [error, failure, inactive, in_progress, queued, pending, success]
+                description:
+                  type: string
+                  maxLength: 140
+                environment_url:
+                  type: string
+                  format: uri
+                auto_inactive:
+                  type: boolean
+                  default: true
+      responses:
+        "201":
+          description: Deployment status created
+        "401":
+          description: Unauthorized
+        "404":
+          description: Deployment not found
+        "422":
+          description: Validation failed
+
+  /repos/{owner}/{repo}/releases:
+    get:
+      operationId: listReleases
+      summary: List releases
+      tags: [releases]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Release list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Release"
+        "404":
+          description: Repository not found
+
+    post:
+      operationId: createRelease
+      summary: Create a release
+      tags: [releases]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRelease"
+      responses:
+        "201":
+          description: Release created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Release"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Repository not found
+        "422":
+          description: Validation failed — tag already exists
+
+  /repos/{owner}/{repo}/releases/{release_id}:
+    delete:
+      operationId: deleteRelease
+      summary: Delete a release
+      description: Deletes the release. Does not delete the associated tag.
+      tags: [releases]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: release_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Release deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Release not found
+
+  /repos/{owner}/{repo}/collaborators:
+    get:
+      operationId: listCollaborators
+      summary: List repository collaborators
+      tags: [collaborators]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: affiliation
+          in: query
+          schema:
+            type: string
+            enum: [outside, direct, all]
+            default: all
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Collaborator list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Collaborator"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Repository not found
+
+  /repos/{owner}/{repo}/collaborators/{username}:
+    put:
+      operationId: addCollaborator
+      summary: Add a repository collaborator
+      description: >-
+        Sends an invitation or directly adds the user. Granting write or admin
+        permission to untrusted users exposes the repo to unauthorized changes.
+      tags: [collaborators]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permission:
+                  type: string
+                  enum: [pull, triage, push, maintain, admin]
+                  default: push
+      responses:
+        "201":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  invitee:
+                    $ref: "#/components/schemas/Collaborator"
+                  permissions:
+                    type: string
+        "204":
+          description: User already a collaborator
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Repository not found
+        "422":
+          description: Validation failed
+
+    delete:
+      operationId: removeCollaborator
+      summary: Remove a collaborator
+      tags: [collaborators]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Collaborator removed
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Collaborator not found
+
+  /repos/{owner}/{repo}/hooks:
+    get:
+      operationId: listHooks
+      summary: List repository webhooks
+      tags: [hooks]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hook"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Repository not found
+
+    post:
+      operationId: createHook
+      summary: Create a webhook
+      description: >-
+        Registers a webhook URL to receive repository events. The secret is used
+        for HMAC validation — if leaked, an attacker can forge payloads.
+      tags: [hooks]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHook"
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hook"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Repository not found
+        "422":
+          description: Validation failed
+
+  /repos/{owner}/{repo}/hooks/{hook_id}:
+    delete:
+      operationId: deleteHook
+      summary: Delete a webhook
+      tags: [hooks]
+      parameters:
+        - $ref: "#/components/parameters/owner"
+        - $ref: "#/components/parameters/repo"
+        - name: hook_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Webhook deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Webhook not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    owner:
+      name: owner
+      in: path
+      required: true
+      schema:
+        type: string
+    repo:
+      name: repo
+      in: path
+      required: true
+      schema:
+        type: string
+    branch:
+      name: branch
+      in: path
+      required: true
+      schema:
+        type: string
+    pull_number:
+      name: pull_number
+      in: path
+      required: true
+      schema:
+        type: integer
+    run_id:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  schemas:
+    Branch:
+      type: object
+      required: [name, commit]
+      properties:
+        name:
+          type: string
+        commit:
+          type: object
+          properties:
+            sha:
+              type: string
+            url:
+              type: string
+              format: uri
+        protected:
+          type: boolean
+
+    BranchProtectionRequest:
+      type: object
+      properties:
+        required_status_checks:
+          type: object
+          properties:
+            strict:
+              type: boolean
+            contexts:
+              type: array
+              items:
+                type: string
+        enforce_admins:
+          type: boolean
+        required_pull_request_reviews:
+          type: object
+          properties:
+            required_approving_review_count:
+              type: integer
+              minimum: 1
+              maximum: 6
+            dismiss_stale_reviews:
+              type: boolean
+        restrictions:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                type: string
+            teams:
+              type: array
+              items:
+                type: string
+
+    BranchProtection:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        required_status_checks:
+          type: object
+        enforce_admins:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+        required_pull_request_reviews:
+          type: object
+
+    PullRequest:
+      type: object
+      required: [id, number, title, state]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+        title:
+          type: string
+        state:
+          type: string
+          enum: [open, closed]
+        body:
+          type: string
+        head:
+          type: object
+          properties:
+            ref:
+              type: string
+            sha:
+              type: string
+        base:
+          type: object
+          properties:
+            ref:
+              type: string
+            sha:
+              type: string
+        user:
+          $ref: "#/components/schemas/Collaborator"
+        merged:
+          type: boolean
+        mergeable:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreatePullRequest:
+      type: object
+      required: [title, head, base]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        body:
+          type: string
+        head:
+          type: string
+          description: Branch containing the changes
+        base:
+          type: string
+          description: Branch to merge into
+        draft:
+          type: boolean
+          default: false
+
+    UpdatePullRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        body:
+          type: string
+        state:
+          type: string
+          enum: [open, closed]
+
+    WorkflowRun:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        head_branch:
+          type: string
+        head_sha:
+          type: string
+        status:
+          type: string
+          enum: [queued, in_progress, completed]
+        conclusion:
+          type: string
+          enum: [success, failure, cancelled, skipped, timed_out, action_required]
+        workflow_id:
+          type: integer
+        run_number:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Secret:
+      type: object
+      required: [name, created_at, updated_at]
+      properties:
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Deployment:
+      type: object
+      required: [id, ref, environment]
+      properties:
+        id:
+          type: integer
+        ref:
+          type: string
+        environment:
+          type: string
+        description:
+          type: string
+        creator:
+          $ref: "#/components/schemas/Collaborator"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        transient_environment:
+          type: boolean
+        production_environment:
+          type: boolean
+
+    CreateDeployment:
+      type: object
+      required: [ref]
+      properties:
+        ref:
+          type: string
+          description: Branch, tag, or SHA to deploy
+        environment:
+          type: string
+          default: production
+        description:
+          type: string
+          maxLength: 140
+        auto_merge:
+          type: boolean
+          default: true
+        required_contexts:
+          type: array
+          items:
+            type: string
+        transient_environment:
+          type: boolean
+          default: false
+        production_environment:
+          type: boolean
+
+    Release:
+      type: object
+      required: [id, tag_name, name]
+      properties:
+        id:
+          type: integer
+        tag_name:
+          type: string
+        name:
+          type: string
+        body:
+          type: string
+        draft:
+          type: boolean
+        prerelease:
+          type: boolean
+        author:
+          $ref: "#/components/schemas/Collaborator"
+        created_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+
+    CreateRelease:
+      type: object
+      required: [tag_name]
+      properties:
+        tag_name:
+          type: string
+        name:
+          type: string
+        body:
+          type: string
+        draft:
+          type: boolean
+          default: false
+        prerelease:
+          type: boolean
+          default: false
+        target_commitish:
+          type: string
+          description: Branch or commit SHA for the tag (defaults to default branch)
+
+    Collaborator:
+      type: object
+      required: [id, login]
+      properties:
+        id:
+          type: integer
+        login:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum: [User, Bot]
+        permissions:
+          type: object
+          properties:
+            admin:
+              type: boolean
+            maintain:
+              type: boolean
+            push:
+              type: boolean
+            triage:
+              type: boolean
+            pull:
+              type: boolean
+
+    Hook:
+      type: object
+      required: [id, config, events, active]
+      properties:
+        id:
+          type: integer
+        config:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            content_type:
+              type: string
+              enum: [json, form]
+            insecure_ssl:
+              type: string
+              enum: ["0", "1"]
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateHook:
+      type: object
+      required: [config]
+      properties:
+        config:
+          type: object
+          required: [url]
+          properties:
+            url:
+              type: string
+              format: uri
+            content_type:
+              type: string
+              enum: [json, form]
+              default: json
+            secret:
+              type: string
+              description: HMAC secret for payload validation
+            insecure_ssl:
+              type: string
+              enum: ["0", "1"]
+              default: "0"
+        events:
+          type: array
+          items:
+            type: string
+            enum: [push, pull_request, release, deployment, workflow_run, issues, create, delete]
+          default: [push]
+        active:
+          type: boolean
+          default: true
