@@ -60,10 +60,9 @@ class TokenDashboard:
         model = self._settings.llm_model
         costs = COST_PER_1K_TOKENS.get(model, {"prompt": 0.003, "completion": 0.015})
 
-        cost = (
-            (prompt_tokens / 1000) * costs["prompt"]
-            + (completion_tokens / 1000) * costs["completion"]
-        )
+        cost = (prompt_tokens / 1000) * costs["prompt"] + (
+            completion_tokens / 1000
+        ) * costs["completion"]
         cost_per_test = cost / max(test_count, 1)
 
         entry = {

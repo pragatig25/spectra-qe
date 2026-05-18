@@ -73,9 +73,7 @@ def risk_score(ctx: click.Context, spec_path: str, output: str | None) -> None:
         )
 
     if output:
-        Path(output).write_text(
-            json.dumps(report.model_dump(mode="json"), indent=2)
-        )
+        Path(output).write_text(json.dumps(report.model_dump(mode="json"), indent=2))
         click.echo(f"\nSaved to {output}")
 
 
@@ -83,7 +81,9 @@ def risk_score(ctx: click.Context, spec_path: str, output: str | None) -> None:
 @click.argument("spec_path", type=click.Path(exists=True))
 @click.option("--output-dir", "-o", default="reports", help="Report output directory")
 @click.option("--base-url", default="", help="Base URL for test execution")
-@click.option("--skip-execution", is_flag=True, help="Generate tests without running them")
+@click.option(
+    "--skip-execution", is_flag=True, help="Generate tests without running them"
+)
 @click.pass_context
 def generate(
     ctx: click.Context,
@@ -93,7 +93,6 @@ def generate(
     skip_execution: bool,
 ) -> None:
     """Generate and optionally execute test cases from an API spec."""
-    import json
 
     from qe_platform.execution.runner import TestRunner
     from qe_platform.generation.case_deduplicator import CaseDeduplicator

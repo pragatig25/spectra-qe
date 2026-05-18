@@ -121,17 +121,13 @@ class ReportGenerator:
                 test_type_dist[tc.test_type.value] = (
                     test_type_dist.get(tc.test_type.value, 0) + 1
                 )
-                risk_tier_dist[tc.risk_tier] = (
-                    risk_tier_dist.get(tc.risk_tier, 0) + 1
-                )
+                risk_tier_dist[tc.risk_tier] = risk_tier_dist.get(tc.risk_tier, 0) + 1
                 covered_endpoints.add(f"{tc.method} {tc.endpoint_path}")
 
         coverage = CoverageMetric(
             total_endpoints=run.total_endpoints,
             covered_endpoints=len(covered_endpoints),
-            coverage_pct=(
-                (len(covered_endpoints) / max(run.total_endpoints, 1)) * 100
-            ),
+            coverage_pct=((len(covered_endpoints) / max(run.total_endpoints, 1)) * 100),
             test_type_distribution=test_type_dist,
             risk_tier_distribution=risk_tier_dist,
         )

@@ -7,7 +7,6 @@ import uuid
 import structlog
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
 
 from qe_platform.config import Settings
 from qe_platform.generation.prompts import TEST_GENERATION_PROMPT
@@ -26,6 +25,7 @@ logger = structlog.get_logger()
 def _extract_json(text: str) -> dict:
     """Strip markdown fences and parse JSON from LLM output, repairing if needed."""
     from json_repair import repair_json
+
     # Strip ```json ... ``` or ``` ... ``` blocks
     match = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", text)
     if match:
@@ -42,7 +42,11 @@ class TestGenerator:
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or Settings()
         self._llm = self._build_llm()
-        self._chain = ChatPromptTemplate.from_template(TEST_GENERATION_PROMPT) | self._llm | StrOutputParser()
+        self._chain = (
+            ChatPromptTemplate.from_template(TEST_GENERATION_PROMPT)
+            | self._llm
+            | StrOutputParser()
+        )
         self._total_tokens = 0
 
     def _build_llm(self):  # type: ignore[no-untyped-def]
@@ -141,9 +145,7 @@ class TestGenerator:
         risk_report: RiskReport,
     ) -> TestGenerationRun:
         run_id = f"run_{uuid.uuid4().hex[:12]}"
-        risk_map = {
-            (a.path, a.method): a for a in risk_report.assessments
-        }
+        risk_map = {(a.path, a.method): a for a in risk_report.assessments}
 
         suites: list[GeneratedTestSuite] = []
         total_tests = 0

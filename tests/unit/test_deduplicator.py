@@ -59,11 +59,13 @@ class TestCaseDeduplicator:
             ),
         ]
 
-        embeddings = np.array([
-            [1.0, 0.0, 0.0],
-            [0.99, 0.05, 0.0],
-            [0.0, 1.0, 0.0],
-        ])
+        embeddings = np.array(
+            [
+                [1.0, 0.0, 0.0],
+                [0.99, 0.05, 0.0],
+                [0.0, 1.0, 0.0],
+            ]
+        )
 
         with patch.object(CaseDeduplicator, "__init__", lambda self, s=None: None):
             dedup = CaseDeduplicator.__new__(CaseDeduplicator)
@@ -82,11 +84,13 @@ class TestCaseDeduplicator:
         assert "tc_3" in result_ids
 
     def test_cosine_similarity_matrix(self) -> None:
-        embeddings = np.array([
-            [1.0, 0.0],
-            [0.0, 1.0],
-            [1.0, 0.0],
-        ])
+        embeddings = np.array(
+            [
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [1.0, 0.0],
+            ]
+        )
         matrix = CaseDeduplicator._cosine_similarity_matrix(embeddings)
         assert matrix[0][2] == pytest.approx(1.0, abs=0.01)
         assert matrix[0][1] == pytest.approx(0.0, abs=0.01)

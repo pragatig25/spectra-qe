@@ -49,9 +49,7 @@ class TestReportGenerator:
         assert report.total_tests == 0
         assert report.pass_rate == 0.0
 
-    def test_to_json_format(
-        self, sample_generation_run: TestGenerationRun
-    ) -> None:
+    def test_to_json_format(self, sample_generation_run: TestGenerationRun) -> None:
         generator = ReportGenerator()
         report = generator.generate(sample_generation_run, [])
         json_str = generator.to_json(report)

@@ -45,7 +45,15 @@ def list_demo_specs() -> list[dict]:
             paths = raw.get("paths", {})
             for path_item in paths.values():
                 for method in path_item:
-                    if method.lower() in {"get", "post", "put", "patch", "delete", "head", "options"}:
+                    if method.lower() in {
+                        "get",
+                        "post",
+                        "put",
+                        "patch",
+                        "delete",
+                        "head",
+                        "options",
+                    }:
                         endpoint_count += 1
 
         results.append(

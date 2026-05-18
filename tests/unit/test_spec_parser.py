@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from qe_platform.ingestion.spec_parser import parse_openapi, parse_user_story
 from qe_platform.models.spec import HttpMethod
 
@@ -28,7 +26,8 @@ class TestParseOpenAPI:
     def test_parses_parameters(self, demo_spec_path: Path) -> None:
         spec = parse_openapi(demo_spec_path)
         list_pets = next(
-            ep for ep in spec.endpoints
+            ep
+            for ep in spec.endpoints
             if ep.path == "/pets" and ep.method == HttpMethod.GET
         )
         assert len(list_pets.parameters) == 2
@@ -40,7 +39,8 @@ class TestParseOpenAPI:
     def test_parses_request_body(self, demo_spec_path: Path) -> None:
         spec = parse_openapi(demo_spec_path)
         create_pet = next(
-            ep for ep in spec.endpoints
+            ep
+            for ep in spec.endpoints
             if ep.path == "/pets" and ep.method == HttpMethod.POST
         )
         assert create_pet.request_body is not None
@@ -50,13 +50,15 @@ class TestParseOpenAPI:
     def test_parses_auth_requirements(self, demo_spec_path: Path) -> None:
         spec = parse_openapi(demo_spec_path)
         create_pet = next(
-            ep for ep in spec.endpoints
+            ep
+            for ep in spec.endpoints
             if ep.path == "/pets" and ep.method == HttpMethod.POST
         )
         assert create_pet.requires_auth is True
 
         list_pets = next(
-            ep for ep in spec.endpoints
+            ep
+            for ep in spec.endpoints
             if ep.path == "/pets" and ep.method == HttpMethod.GET
         )
         assert list_pets.requires_auth is False
@@ -64,7 +66,8 @@ class TestParseOpenAPI:
     def test_parses_responses(self, demo_spec_path: Path) -> None:
         spec = parse_openapi(demo_spec_path)
         create_pet = next(
-            ep for ep in spec.endpoints
+            ep
+            for ep in spec.endpoints
             if ep.path == "/pets" and ep.method == HttpMethod.POST
         )
         status_codes = {r.status_code for r in create_pet.responses}

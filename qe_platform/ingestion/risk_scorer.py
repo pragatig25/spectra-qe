@@ -42,9 +42,7 @@ Endpoint:
 class _RiskAssessmentLLMOutput(BaseModel):
     risk_tier: str = Field(description="One of: Low, Med, High, Critical")
     risk_score: float = Field(ge=0.0, le=1.0, description="0.0 to 1.0")
-    factors: list[dict] = Field(
-        description="List of {name, score, reasoning} dicts"
-    )
+    factors: list[dict] = Field(description="List of {name, score, reasoning} dicts")
     recommended_test_count: int = Field(
         default=5, ge=1, le=20, description="How many tests to generate"
     )
@@ -54,7 +52,9 @@ class RiskScorer:
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or Settings()
         self._llm = self._build_llm()
-        self._structured_llm = self._llm.with_structured_output(_RiskAssessmentLLMOutput)
+        self._structured_llm = self._llm.with_structured_output(
+            _RiskAssessmentLLMOutput
+        )
         self._prompt = ChatPromptTemplate.from_template(RISK_SCORING_PROMPT)
 
     def _build_llm(self):  # type: ignore[no-untyped-def]
@@ -101,7 +101,9 @@ class RiskScorer:
 
         tier = _parse_tier(result.risk_tier)
         factors = [
-            RiskFactor(name=f["name"], score=f["score"], reasoning=f.get("reasoning", ""))
+            RiskFactor(
+                name=f["name"], score=f["score"], reasoning=f.get("reasoning", "")
+            )
             for f in result.factors
         ]
 

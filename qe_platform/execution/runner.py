@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-import uuid
 
 import structlog
 
@@ -22,9 +21,7 @@ class TestRunner:
         self, suite: GeneratedTestSuite, base_url: str = ""
     ) -> list[TestExecutionResult]:
         semaphore = asyncio.Semaphore(self._max_concurrent)
-        tasks = [
-            self._run_single(tc, base_url, semaphore) for tc in suite.test_cases
-        ]
+        tasks = [self._run_single(tc, base_url, semaphore) for tc in suite.test_cases]
         return await asyncio.gather(*tasks)
 
     async def run_all(
