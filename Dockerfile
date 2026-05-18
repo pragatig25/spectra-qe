@@ -12,7 +12,7 @@ COPY ui/ ./
 RUN npm run build
 
 ###############################################################################
-# Stage 2: Python backend
+# Stage 2: Python backend (base)
 ###############################################################################
 FROM python:3.10-slim AS base
 
@@ -37,12 +37,8 @@ COPY --from=frontend-build /app/ui/dist ./ui/dist
 
 RUN pip install --no-cache-dir -e .
 
-EXPOSE 8000
-
-CMD ["uvicorn", "qe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
-
 ###############################################################################
-# Stage 3: Test runner
+# Stage 3: Test runner (docker compose up test)
 ###############################################################################
 FROM base AS test
 
@@ -51,3 +47,12 @@ RUN pip install --no-cache-dir pytest pytest-asyncio pytest-cov pytest-mock
 COPY tests/ ./tests/
 
 CMD ["python", "-m", "pytest", "tests/unit/", "-v"]
+
+###############################################################################
+# Stage 4: Production app (default — must be last)
+###############################################################################
+FROM base AS app
+
+EXPOSE 8000
+
+CMD ["uvicorn", "qe_platform.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
