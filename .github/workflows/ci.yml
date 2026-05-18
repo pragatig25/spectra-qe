@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
-        run: docker build --target base -t qe-platform:latest .
+        run: docker build --target app -t qe-platform:latest .
       - name: Smoke test
         run: |
           docker run -d --name qe-smoke -p 8000:8000 qe-platform:latest
