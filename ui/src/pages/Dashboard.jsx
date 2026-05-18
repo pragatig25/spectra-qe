@@ -4,6 +4,7 @@ import { FileSearch, ShieldAlert, FlaskConical, Server, Cpu, Zap, Clock, Check, 
 import { Card, StatCard } from '../components/Card';
 import { api } from '../lib/api';
 import { useRunHistory, useActiveRuns } from '../hooks/usePipeline';
+import { useAppStore } from '../store/appStore';
 
 const TYPE_META = {
   parse: { label: 'Spec Parse', color: 'blue', path: '/parse' },
@@ -25,9 +26,10 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const history = useRunHistory();
   const activeRuns = useActiveRuns();
+  const setAppHealth = useAppStore((s) => s.setHealth);
 
   useEffect(() => {
-    api.health().then(setHealth).catch(() => {});
+    api.health().then((h) => { setHealth(h); setAppHealth(h); }).catch(() => {});
     api.specs().then(setSpecs).catch(() => {});
   }, []);
 
@@ -58,7 +60,7 @@ export default function Dashboard() {
   return (
     <div className="animate-in max-w-5xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">QE Intelligent Test Generation</h1>
+        <h1 className="text-3xl font-bold text-white">Spectra — AI Test Generation</h1>
         <p className="text-slate-400 mt-2 text-base">
           AI-powered test orchestration — parse specs, score risk, generate tests, execute & report.
         </p>

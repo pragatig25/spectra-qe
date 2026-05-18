@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     self_heal_max_retries: int = 2
     dedup_similarity_threshold: float = 0.92
 
+    # Demo
+    demo_mode: bool = False
+
     # Paths
     reports_dir: Path = Path("reports")
     generated_tests_dir: Path = Path("generated_tests")

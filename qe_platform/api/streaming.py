@@ -14,6 +14,9 @@ from qe_platform.config import Settings
 logger = structlog.get_logger()
 
 
+RECORDINGS_DIR = Path(__file__).parent.parent.parent / "demo" / "recordings"
+
+
 def _sse(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
@@ -22,9 +25,38 @@ def _evt(stage: str, status: str, **kwargs: object) -> str:
     return _sse({"stage": stage, "status": status, "ts": time.time(), **kwargs})
 
 
+def _replay_recording(filename: str) -> Generator[str, None, None]:
+    path = RECORDINGS_DIR / filename
+    if not path.exists():
+        yield _evt("pipeline", "error", error=f"Recording {filename} not found")
+        return
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        data = json.loads(line)
+        data["ts"] = time.time()
+        yield _sse(data)
+        time.sleep(0.4)
+
+
+def _demo_spec_key(spec_path: Path) -> str:
+    name = spec_path.stem.lower()
+    if "github" in name:
+        return "github"
+    return "petstore"
+
+
 def risk_score_stream(
     spec_path: Path, settings: Settings
 ) -> StreamingResponse:
+    if settings.demo_mode:
+        key = _demo_spec_key(spec_path)
+        return StreamingResponse(
+            _replay_recording(f"{key}_risk.jsonl"),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     def generate() -> Generator[str, None, None]:
         from qe_platform.ingestion.risk_scorer import RiskScorer
         from qe_platform.ingestion.spec_parser import parse_openapi
@@ -147,6 +179,14 @@ def generate_stream(
     skip_execution: bool = True,
     base_url: str = "",
 ) -> StreamingResponse:
+    if settings.demo_mode:
+        key = _demo_spec_key(spec_path)
+        return StreamingResponse(
+            _replay_recording(f"{key}_generate.jsonl"),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     def generate() -> Generator[str, None, None]:
         from qe_platform.generation.case_deduplicator import CaseDeduplicator
         from qe_platform.generation.test_generator import TestGenerator
@@ -393,6 +433,14 @@ def report_stream(
     spec_path: Path,
     settings: Settings,
 ) -> StreamingResponse:
+    if settings.demo_mode:
+        key = _demo_spec_key(spec_path)
+        return StreamingResponse(
+            _replay_recording(f"{key}_generate.jsonl"),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     def generate() -> Generator[str, None, None]:
         from qe_platform.generation.case_deduplicator import CaseDeduplicator
         from qe_platform.generation.test_generator import TestGenerator

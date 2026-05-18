@@ -147,7 +147,7 @@ export default function Guide() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-white">Getting Started Guide</h1>
-          <p className="text-sm text-slate-400">Step-by-step walkthrough of the QE Platform pipeline</p>
+          <p className="text-sm text-slate-400">Step-by-step walkthrough of the Spectra pipeline</p>
         </div>
       </div>
 

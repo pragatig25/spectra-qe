@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { LayoutDashboard, FileSearch, ShieldAlert, FlaskConical, FileText, BookOpen } from 'lucide-react';
 import RunHistory from './RunHistory';
 import { useActiveRuns } from '../hooks/usePipeline';
+import { useAppStore } from '../store/appStore';
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', pipelineType: null },
@@ -15,13 +16,21 @@ const NAV = [
 export default function Layout() {
   const activeRuns = useActiveRuns();
   const activeTypes = new Set(activeRuns.map((r) => r.type));
+  const health = useAppStore((s) => s.health);
 
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
       <nav className="w-64 bg-slate-900 border-r border-slate-700 flex flex-col shrink-0">
         <div className="p-5 border-b border-slate-700">
-          <h1 className="text-lg font-bold text-white tracking-tight">QE Platform</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-white tracking-tight">Spectra</h1>
+            {health?.demo_mode && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                DEMO
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-400 mt-1">AI Test Generation</p>
         </div>
 
