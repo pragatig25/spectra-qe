@@ -36,9 +36,12 @@ from qe_platform.config import Settings
 logger = structlog.get_logger()
 
 app = FastAPI(
-    title="QE Intelligent Test Generation Platform",
+    title="Spectra — AI Test Generation Platform",
     description="AI-powered test orchestration: parse specs, score risk, generate tests",
     version=__version__,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 app.add_middleware(
@@ -76,6 +79,7 @@ async def health() -> HealthResponse:
         version=__version__,
         llm_provider=_settings.llm_provider,
         llm_model=_settings.llm_model,
+        demo_mode=_settings.demo_mode,
     )
 
 
